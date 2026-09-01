@@ -29,7 +29,7 @@ public class NukebobConfigScreen extends Screen {
         parent = screen;
         super(Component.literal("Config"));
         showLivesInNametag = new LittleNukebob();
-        showLivesInNametag.setPos(new Vec2(0.5f, 0.1f));
+        showLivesInNametag.setPos(new Vec2(0.5f, 0.9f));
         littleNukebobs = new LittleNukebob[]{showLivesInNametag};
     }
 
@@ -96,7 +96,7 @@ public class NukebobConfigScreen extends Screen {
                 littleNukebob.setVel(Vec2.ZERO);
             }
             //tooltip
-            boolean hovered = littleNukebob.isInHitbox(littleNukeScale, width, height, mouseX, mouseY);
+            boolean hovered = littleNukebob.isInHitbox(littleNukeScale, width, height, mouseX, mouseY) && !(littleNukebob.getPos().x<0.55&littleNukebob.getPos().x>0.45&&littleNukebob.getPos().y>0.25&&littleNukebob.getPos().y<0.75);
             if (hovered) graphics.setTooltipForNextFrame(minecraft.font, Component.literal("ballz"), mouseX, mouseY);
 
             graphics.pose().pushMatrix();
@@ -111,7 +111,7 @@ public class NukebobConfigScreen extends Screen {
             graphics.pose().popMatrix();
         }
 
-        //graphics.fill((int) (width/2f-scale/2.9f), (int) (height/2f-scale/2.5f), (int) (width/2f+scale/3.1f), (int) (height/2f+scale/4f), 0xAAFFFFFF);
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, NukebobConfig.id("nukebobs/big_front"), (width-scale)/2, (height-scale)/2, scale, scale);
     }
 
     @Override

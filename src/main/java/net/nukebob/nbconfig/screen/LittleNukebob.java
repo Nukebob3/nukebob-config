@@ -1,5 +1,8 @@
 package net.nukebob.nbconfig.screen;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.phys.Vec2;
 
 public class LittleNukebob {
@@ -8,6 +11,13 @@ public class LittleNukebob {
 
     private Vec2 pos = Vec2.ZERO;
     private Vec2 vel = Vec2.ZERO;
+
+    private static final float HOLE_HALF_WIDTH_FRAC = 0.8f/3.0f;
+    private static final float HOLE_Y_THRESHOLD_FRAC = 2.5f / 3f;
+    private static final float SHELL_THICKNESS = 0.15f;
+
+    private boolean inside = false;
+
     private float rot = 0;
 
     public void setPos(Vec2 pos) {
@@ -86,6 +96,18 @@ public class LittleNukebob {
         }
         //drag
         scaleVelocity(0.99f);
+
+        //if consumed
+        if (getPos().x<0.65&getPos().x>0.35&&getPos().y>0.45&&getPos().y<0.55) {
+            if (!inside) {
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.GENERIC_EAT.value(), 1f, 5f));
+                inside = true;
+            }
+            setVel(new Vec2(0,0));
+        } else if (inside) {
+            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_TRUMPET_OXIDIZED.value(), 0f, 5f));
+            inside = false;
+        }
     }
     public Vec2 getHitboxCenter(float littleNukeScale, float width, float height) {
         Vec2 localOffset = new Vec2(0, HITBOX_OFFSET * littleNukeScale / height).rotate(rot);
@@ -118,6 +140,7 @@ public class LittleNukebob {
         float ny = localY - HITBOX_OFFSET;
         return localX * localX + ny * ny < 0.15f;
     }
+    private boolean fallingThroughHole = false;
 
     public void resolveCenterSphereCollision(Vec2 centerPos, float centerRadiusPixels, float littleNukeScale, float width, float height) {
         Vec2 hitboxCenter = getHitboxCenter(littleNukeScale, width, height);
@@ -131,11 +154,22 @@ public class LittleNukebob {
         float ny = delta.y / (myRy + centerRy);
         float distNorm = (float) Math.sqrt(nx * nx + ny * ny);
 
-        if (distNorm < 1f && distNorm > 0.0001f) {
-            Vec2 normal = new Vec2(nx / distNorm, ny / distNorm);
-            float overlap = (1f - distNorm) * ((myRx + centerRx + myRy + centerRy) / 2f);
-            addPos(normal.scale(overlap));
+        boolean inHoleNow = isInHole(nx, ny);
 
+        if (inHoleNow) {
+            fallingThroughHole = true;
+        } else if (distNorm < (1f - SHELL_THICKNESS)) {
+            fallingThroughHole = false;
+        } else if (distNorm > 1f) {
+            fallingThroughHole = false;
+        }
+
+        if (distNorm < 1f && distNorm > (1f - SHELL_THICKNESS) && !fallingThroughHole) {
+            Vec2 correctedDelta = delta.scale(1f / distNorm);
+            Vec2 newHitboxCenter = centerPos.add(correctedDelta);
+            addPos(newHitboxCenter.add(hitboxCenter.scale(-1)));
+
+            Vec2 normal = new Vec2(nx / distNorm, ny / distNorm);
             float velDot = vel.x * normal.x + vel.y * normal.y;
             if (velDot < 0) {
                 addVel(normal.scale(-2f * velDot * 0.5f));
@@ -155,12 +189,17 @@ public class LittleNukebob {
         float ny = delta.y / (myRy + centerRy);
         float distNorm = (float) Math.sqrt(nx * nx + ny * ny);
 
-        if (distNorm < 1f && distNorm > 0.0001f) {
+        if (distNorm < 1f && distNorm > 0.0001f && !isInHole(nx, ny)) {
             Vec2 correctedDelta = delta.scale(1f / distNorm);
             Vec2 newHitboxCenter = centerPos.add(correctedDelta);
             Vec2 correction = newHitboxCenter.add(hitboxCenter.scale(-1));
             addPos(correction);
         }
+    }
+
+    private boolean isInHole(float nx, float ny) {
+        float margin = 0.05f;
+        return Math.abs(nx) < (HOLE_HALF_WIDTH_FRAC - margin) && ny < -(HOLE_Y_THRESHOLD_FRAC + margin);
     }
 
     public Vec2 getLightDirectionRelative(Vec2 lightSource, float height, float littleNukeScale) {
