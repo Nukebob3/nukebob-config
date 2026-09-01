@@ -22,6 +22,7 @@ void main() {
     if (color.rgb == vec3(1.0)) {
         vec2 uv = texCoord0;
         uv-=0.5-1/64.;
+        uv.y-=0.03;
         uv.x = round(uv.x*32.)/32.;
         uv.y = round(uv.y*32.)/32.;
         float dist = length(uv);
