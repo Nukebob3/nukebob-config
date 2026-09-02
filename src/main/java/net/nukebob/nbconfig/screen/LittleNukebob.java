@@ -92,9 +92,9 @@ public class LittleNukebob {
         float distToBigOne = NukebobConfigScreen.CENTER_POS.add(pos.scale(-1)).length();
         float bigCollisionRadius = NukebobConfigScreen.CENTER_RADIUS+HITBOX_RADIUS*littleNukeScale;
         if (distToBigOne<bigCollisionRadius) {
-            Vec2 offset = pos.add(NukebobConfigScreen.CENTER_POS.scale(-1)).normalized();
-            setPos(NukebobConfigScreen.CENTER_POS.add(offset.scale(bigCollisionRadius)));
-            //setVel(Vec2.ZERO);
+            Vec2 normal = pos.add(NukebobConfigScreen.CENTER_POS.scale(-1)).normalized();
+            setVel(vel.add(normal.scale(-2f*(vel.dot(normal)))));
+            setPos(NukebobConfigScreen.CENTER_POS.add(normal.scale(bigCollisionRadius)));
         }
     }
 
