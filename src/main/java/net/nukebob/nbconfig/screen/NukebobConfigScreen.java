@@ -32,13 +32,13 @@ public class NukebobConfigScreen extends Screen {
         parent = screen;
         super(Component.literal("Config"));
         showLivesInNametag = new LittleNukebob();
-        showLivesInNametag.setPos(new Vec2(0.5f, 0.9f));
         littleNukebobs = new LittleNukebob[]{showLivesInNametag};
     }
 
     @Override
     protected void init() {
         super.init();
+        showLivesInNametag.setPos(new Vec2(0.5f*width, 0.9f*height));
     }
 
     @Override
@@ -84,7 +84,7 @@ public class NukebobConfigScreen extends Screen {
                                     littleNukebobs[selected].getCollisionRadius(littleNukeScale),
                                     height - littleNukebobs[selected].getCollisionRadius(littleNukeScale))));
 
-            //littleNukebobs[selected].pushOutOfCenterSphere(centerPos, centerRadius, littleNukeScale, width, height);
+            littleNukebobs[selected].pushOutOfBigNukebob(littleNukeScale);
         }
 
         //render and physics
