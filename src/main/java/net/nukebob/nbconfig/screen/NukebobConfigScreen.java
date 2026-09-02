@@ -76,10 +76,10 @@ public class NukebobConfigScreen extends Screen {
                             1 - littleNukebobs[selected].getCollisionRadiusX(littleNukeScale, width)),
 
                             Mth.clamp((float) mouseY / height,
-                                    0 + littleNukebobs[selected].getCollisionRadiusY(littleNukeScale, height) - 0.003f,
-                                    1 - littleNukebobs[selected].getCollisionRadiusY(littleNukeScale, height)) - 0.003f));
+                                    0 + littleNukebobs[selected].getCollisionRadiusY(littleNukeScale, height),
+                                    1 - littleNukebobs[selected].getCollisionRadiusY(littleNukeScale, height))));
 
-            littleNukebobs[selected].pushOutOfCenterSphere(centerPos, centerRadius, littleNukeScale, width, height);
+            //littleNukebobs[selected].pushOutOfCenterSphere(centerPos, centerRadius, littleNukeScale, width, height);
         }
 
         for (int i = 0; i<littleNukebobs.length; i++) {
@@ -90,8 +90,9 @@ public class NukebobConfigScreen extends Screen {
             Vec2 lightDirectionRelative = littleNukebob.getLightDirectionRelative(lightSource, height, littleNukeScale);
             //physics
             if (i!=selected&&!(mouseButton==GLFW.GLFW_MOUSE_BUTTON_LEFT||mouseButton==GLFW.GLFW_MOUSE_BUTTON_RIGHT)) {
-                littleNukebob.physics((float) Math.min(minecraft.getDeltaTracker().getRealtimeDeltaTicks(),0.5), (float) littleNukeScale, width, height);
-                littleNukebob.resolveCenterSphereCollision(centerPos, centerRadius, littleNukeScale, width, height);
+                float delta = (float) Math.min(minecraft.getDeltaTracker().getRealtimeDeltaTicks(),0.5);
+                littleNukebob.physics(delta, (float) littleNukeScale, width, height);
+                //littleNukebob.resolveCenterSphereCollision(centerPos, centerRadius, littleNukeScale, width, height);
             } else {
                 littleNukebob.setVel(Vec2.ZERO);
             }
@@ -111,7 +112,7 @@ public class NukebobConfigScreen extends Screen {
             graphics.pose().popMatrix();
         }
 
-        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, NukebobConfig.id("nukebobs/big_front"), (width-scale)/2, (height-scale)/2, scale, scale);
+        //graphics.blitSprite(RenderPipelines.GUI_TEXTURED, NukebobConfig.id("nukebobs/big_front"), (width-scale)/2, (height-scale)/2, scale, scale);
     }
 
     @Override
@@ -139,10 +140,10 @@ public class NukebobConfigScreen extends Screen {
             if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
                 Vec2 force = new Vec2((float) event.x(), (float) event.y()).add(clickPos.scale(-1));
                 float length = Math.min(force.length(), 75);
-                length = (length / 5) * (length / 5);
+                length = (length / 5);
                 force = force.normalized().scale(length);
 
-                littleNukebobs[selected].setVel(force.scale(0.001f));
+                littleNukebobs[selected].setVel(force.scale(0.01f));
             } else if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
                 littleNukebobs[selected].setVel(dragVelocity.scale(3f));
             }
