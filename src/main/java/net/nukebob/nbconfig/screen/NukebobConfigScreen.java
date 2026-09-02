@@ -25,6 +25,9 @@ public class NukebobConfigScreen extends Screen {
     private Vec2 lastDragMouse = Vec2.ZERO;
     private Vec2 dragVelocity = Vec2.ZERO;
 
+    public static Vec2 CENTER_POS = Vec2.ZERO;
+    public static float CENTER_RADIUS = 0;
+
     public NukebobConfigScreen(Screen screen) {
         parent = screen;
         super(Component.literal("Config"));
@@ -45,8 +48,8 @@ public class NukebobConfigScreen extends Screen {
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, NukebobConfig.id("nukebobs/big"), (width-scale)/2, (height-scale)/2, scale, scale);
 
         //big one
-        Vec2 centerPos = new Vec2(0.5f - (float) scale / width / 80f, 0.5f - (float) scale / height / 15f);
-        float centerRadius = scale / 3.1f;
+        CENTER_POS = new Vec2(width/2f - (float) scale / 80f, height/2f - (float) scale / 15f);
+        CENTER_RADIUS = scale / 3.1f;
 
         int littleNukeScale = scale/6;
         //force vector
@@ -64,30 +67,33 @@ public class NukebobConfigScreen extends Screen {
             graphics.pose().translate(-16, -32);
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, NukebobConfig.id("arrow"), 0, 0, 32, 32, 0x99FFFFFF);
             graphics.pose().popMatrix();
-        } else if (selected!=-1&&mouseButton==GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
-            Vec2 newMouse = new Vec2(mouseX / (float) width, mouseY / (float) height);
+        }
+        //right-click drag
+        else if (selected!=-1&&mouseButton==GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            Vec2 newMouse = new Vec2(mouseX, mouseY);
             dragVelocity = newMouse.add(lastDragMouse.scale(-1));
             lastDragMouse = newMouse;
 
             littleNukebobs[selected].setPos(
                     new Vec2(Mth.clamp(
-                            (float) mouseX / width,
-                            littleNukebobs[selected].getCollisionRadiusX(littleNukeScale, width),
-                            1 - littleNukebobs[selected].getCollisionRadiusX(littleNukeScale, width)),
+                            (float) mouseX,
+                            littleNukebobs[selected].getCollisionRadius(littleNukeScale),
+                            width - littleNukebobs[selected].getCollisionRadius(littleNukeScale)),
 
-                            Mth.clamp((float) mouseY / height,
-                                    0 + littleNukebobs[selected].getCollisionRadiusY(littleNukeScale, height),
-                                    1 - littleNukebobs[selected].getCollisionRadiusY(littleNukeScale, height))));
+                            Mth.clamp((float) mouseY,
+                                    littleNukebobs[selected].getCollisionRadius(littleNukeScale),
+                                    height - littleNukebobs[selected].getCollisionRadius(littleNukeScale))));
 
             //littleNukebobs[selected].pushOutOfCenterSphere(centerPos, centerRadius, littleNukeScale, width, height);
         }
 
+        //render and physics
         for (int i = 0; i<littleNukebobs.length; i++) {
             LittleNukebob littleNukebob = littleNukebobs[i];
 
             //light
             Vec2 lightSource = new Vec2((float) width /2+ (float) height *3/8, (float) -height /1.5f);
-            Vec2 lightDirectionRelative = littleNukebob.getLightDirectionRelative(lightSource, height, littleNukeScale);
+            Vec2 lightDirectionRelative = littleNukebob.getLightDirectionRelative(lightSource, littleNukeScale);
             //physics
             if (i!=selected&&!(mouseButton==GLFW.GLFW_MOUSE_BUTTON_LEFT||mouseButton==GLFW.GLFW_MOUSE_BUTTON_RIGHT)) {
                 float delta = (float) Math.min(minecraft.getDeltaTracker().getRealtimeDeltaTicks(),0.5);
@@ -97,11 +103,11 @@ public class NukebobConfigScreen extends Screen {
                 littleNukebob.setVel(Vec2.ZERO);
             }
             //tooltip
-            boolean hovered = littleNukebob.isInHitbox(littleNukeScale, width, height, mouseX, mouseY) && !(littleNukebob.getPos().x<0.55&littleNukebob.getPos().x>0.45&&littleNukebob.getPos().y>0.25&&littleNukebob.getPos().y<0.75);
+            boolean hovered = littleNukebob.isInHitbox(littleNukeScale, mouseX, mouseY);
             if (hovered) graphics.setTooltipForNextFrame(minecraft.font, Component.literal("ballz"), mouseX, mouseY);
 
             graphics.pose().pushMatrix();
-            graphics.pose().translate(littleNukebob.getPos().x*width, littleNukebob.getPos().y*height);
+            graphics.pose().translate(littleNukebob.getPos().x, littleNukebob.getPos().y);
             graphics.pose().rotate(littleNukebob.getRot());
             graphics.pose().translate(-littleNukeScale/2f, -littleNukeScale/2f);
             int color = 0xFF000000;
@@ -119,11 +125,11 @@ public class NukebobConfigScreen extends Screen {
     public boolean mouseClicked(@NonNull MouseButtonEvent event, boolean doubleClick) {
         boolean clicked = false;
         for (int i = 0; i < littleNukebobs.length; i++) {
-            if (littleNukebobs[i].isInHitbox((float) (height*0.8/6), (float) width, (float) height, (float) event.x(), (float) event.y())) {
+            if (littleNukebobs[i].isInHitbox((float) (height*0.8/6), (float) event.x(), (float) event.y())) {
                 clicked = true;
                 selected = i;
                 clickPos = new Vec2((float) event.x(), (float) event.y());
-                lastDragMouse = new Vec2((float) (event.x() / (float) width), (float) (event.y() / (float) height));
+                lastDragMouse = new Vec2((float) event.x(), (float) event.y());
                 mouseButton = event.button();
                 break;
             }
@@ -143,7 +149,7 @@ public class NukebobConfigScreen extends Screen {
                 length = (length / 5);
                 force = force.normalized().scale(length);
 
-                littleNukebobs[selected].setVel(force.scale(0.01f));
+                littleNukebobs[selected].setVel(force.scale(4f));
             } else if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
                 littleNukebobs[selected].setVel(dragVelocity.scale(3f));
             }

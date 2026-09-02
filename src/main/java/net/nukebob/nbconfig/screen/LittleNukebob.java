@@ -6,7 +6,7 @@ import net.minecraft.world.phys.Vec2;
 public class LittleNukebob {
     private static final float HITBOX_RADIUS = (float) Math.sqrt(0.15);
 
-    private Vec2 pos = Vec2.ZERO; //0 to 1
+    private Vec2 pos = Vec2.ZERO;
     private Vec2 vel = Vec2.ZERO;
 
     private float rot = 0;
@@ -61,47 +61,46 @@ public class LittleNukebob {
 
     public void physics(float delta, float littleNukeScale, float width, float height) {
         //radius
-        float ry = getCollisionRadiusY(littleNukeScale, height);
-        float rx = getCollisionRadiusX(littleNukeScale, width);
+        float r = getCollisionRadius(littleNukeScale);
 
         //gravity
-        float gravity = 0.01f;
+        float gravity = 3f;
         addVel(new Vec2(0, gravity*delta));
         //apply velocity
         addPos(vel.scale(delta));
         //wall bounce
         float wallRestitution = 0.8f;
-        if (pos.y+ry>1) {
+        if (pos.y+r>height) {
             scaleVelocityY(-1*wallRestitution);
         }
-        if (pos.y-ry<0) {
+        if (pos.y-r<0) {
             scaleVelocityY(-1*wallRestitution);
         }
-        if (pos.x+rx>1) {
+        if (pos.x+r>width) {
             scaleVelocityX(-1*wallRestitution);
         }
-        if (pos.x-rx<0) {
+        if (pos.x-r<0) {
             scaleVelocityX(-1*wallRestitution);
         }
-        setPosY(Mth.clamp(pos.y, ry, 1-ry));
-        setPosX(Mth.clamp(pos.x, rx, 1-rx));
+        setPosY(Mth.clamp(pos.y, r, height-r));
+        setPosX(Mth.clamp(pos.x, r, width-r));
         //floor friction
-        if (pos.y+ry>0.999f) {
+        if (pos.y+r>height-r-3) {
             scaleVelocityX(0.975f);
         }
+        //big nukebob collision
+        if (NukebobConfigScreen.CENTER_POS.add(pos.scale(-1)).length()<NukebobConfigScreen.CENTER_RADIUS+HITBOX_RADIUS*littleNukeScale) {
+            setVel(Vec2.ZERO);
+        }
     }
 
-    public float getCollisionRadiusX(float littleNukeScale, float width) {
-        return HITBOX_RADIUS * littleNukeScale / width;
+    public float getCollisionRadius(float littleNukeScale) {
+        return HITBOX_RADIUS * littleNukeScale;
     }
 
-    public float getCollisionRadiusY(float littleNukeScale, float height) {
-        return HITBOX_RADIUS * littleNukeScale / height;
-    }
-
-    public boolean isInHitbox(float littleNukeScale, float width, float height, float mouseX, float mouseY) {
-        float pivotX = pos.x * width;
-        float pivotY = pos.y * height;
+    public boolean isInHitbox(float littleNukeScale, float mouseX, float mouseY) {
+        float pivotX = pos.x;
+        float pivotY = pos.y;
 
         float dx = mouseX - pivotX;
         float dy = mouseY - pivotY;
@@ -118,7 +117,7 @@ public class LittleNukebob {
         return localX * localX + ny * ny < 0.15f;
     }
 
-    public Vec2 getLightDirectionRelative(Vec2 lightSource, float height, float littleNukeScale) {
-        return pos.scale(height).add(littleNukeScale/2f).add(lightSource.scale(-1)).normalized().rotate(-rot);
+    public Vec2 getLightDirectionRelative(Vec2 lightSource, float littleNukeScale) {
+        return pos.add(littleNukeScale/2f).add(lightSource.scale(-1)).normalized().rotate(-rot);
     }
 }
