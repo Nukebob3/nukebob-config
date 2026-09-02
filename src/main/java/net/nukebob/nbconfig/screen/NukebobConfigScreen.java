@@ -60,6 +60,13 @@ public class NukebobConfigScreen extends Screen {
             float angle = (float) Math.atan2(force.x, -force.y);
             float arrowScale = length/32f;
 
+            int steps = 9;
+            for (int i = 0; i < steps; i++) {
+                Vec2 futurePos = littleNukebobs[selected].physicsStep(i, littleNukeScale, width, height, force);
+                int color = 0x00FFFFFF | ((int)(255 * ((steps - i) / (float) steps)) << 24);
+                graphics.verticalLine((int) futurePos.x, (int) futurePos.y, (int) futurePos.y, color);
+            }
+
             graphics.pose().pushMatrix();
             graphics.pose().translate(clickPos.x, clickPos.y);
             graphics.pose().rotate(angle);

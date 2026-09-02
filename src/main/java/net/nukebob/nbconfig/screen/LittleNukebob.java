@@ -98,6 +98,49 @@ public class LittleNukebob {
         }
     }
 
+    public Vec2 physicsStep(int steps, float littleNukeScale, float width, float height, Vec2 newVel) {
+        Vec2 pos = this.pos;
+        Vec2 vel = newVel;
+        for (int i = 0; i<steps; i++) {
+            //radius
+            float r = getCollisionRadius(littleNukeScale);
+
+            //gravity
+            float gravity = 3f;
+            vel = vel.add(new Vec2(0, gravity * 0.5f));
+            //apply velocity
+            pos = pos.add(vel.scale(0.5f));
+            //wall bounce
+            float wallRestitution = 0.8f;
+            if (pos.y + r > height) {
+                vel = new Vec2(vel.x, vel.y * -1 * wallRestitution);
+            }
+            if (pos.y - r < 0) {
+                vel = new Vec2(vel.x, vel.y * -1 * wallRestitution);
+            }
+            if (pos.x + r > width) {
+                vel = new Vec2(vel.x * -1 * wallRestitution, vel.y);
+            }
+            if (pos.x - r < 0) {
+                vel = new Vec2(vel.x * -1 * wallRestitution, vel.y);
+            }
+            pos = new Vec2(Mth.clamp(pos.x, r, width - r), Mth.clamp(pos.y, r, height - r));
+            //floor friction
+            if (pos.y + r > height - r - 3) {
+                vel = new Vec2(vel.x * 0.975f, vel.y);
+            }
+            //big nukebob collision
+            float distToBigOne = NukebobConfigScreen.CENTER_POS.add(pos.scale(-1)).length();
+            float bigCollisionRadius = NukebobConfigScreen.CENTER_RADIUS + HITBOX_RADIUS * littleNukeScale;
+            if (distToBigOne < bigCollisionRadius) {
+                Vec2 normal = pos.add(NukebobConfigScreen.CENTER_POS.scale(-1)).normalized();
+                vel = (vel.add(normal.scale(-2f * (vel.dot(normal)))).scale(0.8f));
+                pos = (NukebobConfigScreen.CENTER_POS.add(normal.scale(bigCollisionRadius + 1)));
+            }
+        }
+        return pos;
+    }
+
     public void pushOutOfBigNukebob(float littleNukeScale) {
         float distToBigOne = NukebobConfigScreen.CENTER_POS.add(pos.scale(-1)).length();
         float bigCollisionRadius = NukebobConfigScreen.CENTER_RADIUS+HITBOX_RADIUS*littleNukeScale;
