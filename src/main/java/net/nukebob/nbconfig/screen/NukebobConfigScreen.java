@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec2;
 import net.nukebob.nbconfig.NukebobConfig;
+import net.nukebob.nbconfig.config.MainConfig;
 import net.nukebob.nbconfig.render.NukebobPipelines;
 import org.jspecify.annotations.NonNull;
 import org.lwjgl.glfw.GLFW;
@@ -31,7 +32,10 @@ public class NukebobConfigScreen extends Screen {
     public NukebobConfigScreen(Screen screen) {
         parent = screen;
         super(Component.literal("Config"));
-        showLivesInNametag = new LittleNukebob();
+        showLivesInNametag = new LittleNukebob(Component.literal("Show lives in nametag"), (littleNukebob)->{
+            MainConfig.loadConfig().showLivesInNametag=!MainConfig.loadConfig().showLivesInNametag;
+            littleNukebob.enabled = MainConfig.loadConfig().showLivesInNametag;
+        });
         littleNukebobs = new LittleNukebob[]{showLivesInNametag};
     }
 
@@ -39,6 +43,7 @@ public class NukebobConfigScreen extends Screen {
     protected void init() {
         super.init();
         showLivesInNametag.setPos(new Vec2(0.5f*width, 0.9f*height));
+        showLivesInNametag.enabled = MainConfig.loadConfig().showLivesInNametag;
     }
 
     @Override
@@ -47,9 +52,35 @@ public class NukebobConfigScreen extends Screen {
         int scale = (int) (this.height*0.8);
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, NukebobConfig.id("nukebobs/big"), (width-scale)/2, (height-scale)/2, scale, scale);
 
+        //help arrow
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, NukebobConfig.id("help_arrow"), (width-scale/8)/2, (int) (height*0.05f), scale/8, scale/8, 0x99FFFFFF);
+        graphics.centeredText(minecraft.font, "Drop configs in here to toggle", width/2, (int) (height*0.02f), 0x99FFFFFF);
+
         //big one
-        CENTER_POS = new Vec2(width/2f - (float) scale / 80f, height/2f - (float) scale / 15f);
+        CENTER_POS = new Vec2(width/2f, height/2f - (float) scale / 13f);
         CENTER_RADIUS = scale / 3.1f;
+
+
+/* hitbox for big one
+        //big hitbox
+        float quadX = (width - scale) / 2f;
+        float quadY = (height - scale) / 2f;
+        float xOffsetPixels = CENTER_POS.x - quadX;
+        float yOffsetPixels = CENTER_POS.y - quadY;
+        float normalizedXOffset = xOffsetPixels / (float) scale;
+        float normalizedYOffset = yOffsetPixels / (float) scale;
+        float normalizedRadius = CENTER_RADIUS / (float) scale;
+
+        int redChannel = Mth.clamp((int)(normalizedXOffset * 255f), 0, 255);
+        int greenChannel = Mth.clamp((int)(normalizedYOffset * 255f), 0, 255);
+        int blueChannel = Mth.clamp((int)(normalizedRadius * 255f), 0, 255);
+
+        int bigCol = 0xFF000000 | (redChannel << 16) | (greenChannel << 8) | blueChannel;
+        graphics.blit(NukebobPipelines.BIG_NUKEBOB_HITBOX, NukebobConfig.id("textures/gui/sprites/nukebobs/big.png"), (width-scale)/2, (height-scale)/2, 0, 0, scale, scale, scale, scale, bigCol);
+
+*/
+
+
 
         int littleNukeScale = scale/6;
         //force vector
@@ -105,13 +136,12 @@ public class NukebobConfigScreen extends Screen {
             if (i!=selected&&!(mouseButton==GLFW.GLFW_MOUSE_BUTTON_LEFT||mouseButton==GLFW.GLFW_MOUSE_BUTTON_RIGHT)) {
                 float delta = (float) Math.min(minecraft.getDeltaTracker().getRealtimeDeltaTicks(),0.5);
                 littleNukebob.physics(delta, (float) littleNukeScale, width, height);
-                //littleNukebob.resolveCenterSphereCollision(centerPos, centerRadius, littleNukeScale, width, height);
             } else {
                 littleNukebob.setVel(Vec2.ZERO);
             }
             //tooltip
             boolean hovered = littleNukebob.isInHitbox(littleNukeScale, mouseX, mouseY);
-            if (hovered) graphics.setTooltipForNextFrame(minecraft.font, Component.literal("ballz"), mouseX, mouseY);
+            if (hovered&&!littleNukebob.inside) graphics.setTooltipForNextFrame(minecraft.font, littleNukebob.name.copy().append(Component.literal(": ").append(littleNukebob.enabled?Component.literal("enabled").withColor(0x3dd162):Component.literal("disabled").withColor(0xe64b43))), mouseX, mouseY);
 
             graphics.pose().pushMatrix();
             graphics.pose().translate(littleNukebob.getPos().x, littleNukebob.getPos().y);
@@ -121,18 +151,18 @@ public class NukebobConfigScreen extends Screen {
             int r = (int) ((lightDirectionRelative.x * 0.5f + 0.5f) * 255f);
             int g = (int) ((lightDirectionRelative.y * 0.5f + 0.5f) * 255f);
             color = color | (r << 16) | (g << 8);
-            graphics.blit(NukebobPipelines.LITTLE_NUKEBOB_GUI, NukebobConfig.id("textures/gui/sprites/nukebobs/"+(!hovered?"little":"little_hover")+".png"), 0,0, 0, 0, littleNukeScale, littleNukeScale, littleNukeScale, littleNukeScale, color);
+            graphics.blit(NukebobPipelines.LITTLE_NUKEBOB_GUI, NukebobConfig.id("textures/gui/sprites/nukebobs/"+(!(hovered&&!littleNukebob.inside)?"little":"little_hover")+(littleNukebob.enabled?"_on":"")+".png"), 0,0, 0, 0, littleNukeScale, littleNukeScale, littleNukeScale, littleNukeScale, color);
             graphics.pose().popMatrix();
         }
 
-        //graphics.blitSprite(RenderPipelines.GUI_TEXTURED, NukebobConfig.id("nukebobs/big_front"), (width-scale)/2, (height-scale)/2, scale, scale);
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, NukebobConfig.id("nukebobs/big_front"), (width-scale)/2, (height-scale)/2, scale, scale);
     }
 
     @Override
     public boolean mouseClicked(@NonNull MouseButtonEvent event, boolean doubleClick) {
         boolean clicked = false;
         for (int i = 0; i < littleNukebobs.length; i++) {
-            if (littleNukebobs[i].isInHitbox((float) (height*0.8/6), (float) event.x(), (float) event.y())) {
+            if (littleNukebobs[i].isInHitbox((float) (height*0.8/6), (float) event.x(), (float) event.y())&&!littleNukebobs[i].inside) {
                 clicked = true;
                 selected = i;
                 clickPos = new Vec2((float) event.x(), (float) event.y());
@@ -169,5 +199,6 @@ public class NukebobConfigScreen extends Screen {
     @Override
     public void onClose() {
         minecraft.setScreenAndShow(parent);
+        MainConfig.saveConfig();
     }
 }

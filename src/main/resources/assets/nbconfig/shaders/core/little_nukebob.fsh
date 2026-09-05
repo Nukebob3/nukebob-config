@@ -16,9 +16,19 @@ out vec4 fragColor;
 
 void main() {
     vec4 color = texture(Sampler0, texCoord0);
-    if (color.a == 0.0) {
-        discard;
+
+    bool hitbox = false;
+    if (!hitbox) {
+        if (color.a == 0.0) {
+            discard;
+        }
+    } else {
+        fragColor = color * ColorModulator;
+        vec2 penis = texCoord0-0.5;
+        if (penis.x*penis.x+(penis.y-0.03)*(penis.y-0.03) < 0.15) fragColor += vec4(0,1,0, 0.5);
+        return;
     }
+
     if (color.rgb == vec3(1.0)) {
         vec2 uv = texCoord0;
         uv-=0.5-1/64.;

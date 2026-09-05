@@ -1,7 +1,13 @@
 package net.nukebob.nbconfig.screen;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec2;
+
+import java.util.function.Consumer;
 
 public class LittleNukebob {
     private static final float HITBOX_RADIUS = (float) Math.sqrt(0.15);
@@ -10,6 +16,17 @@ public class LittleNukebob {
     private Vec2 vel = Vec2.ZERO;
 
     private float rot = 0;
+
+    public boolean inside = false;
+
+    public final MutableComponent name;
+    private final Consumer<LittleNukebob> onPress;
+    public boolean enabled;
+
+    public LittleNukebob(MutableComponent name, Consumer<LittleNukebob> onPress) {
+        this.name = name;
+        this.onPress = onPress;
+    }
 
     public void setPos(Vec2 pos) {
         this.pos = pos;
@@ -89,27 +106,94 @@ public class LittleNukebob {
             scaleVelocityX(0.975f);
         }
         //big nukebob collision
-        float distToBigOne = NukebobConfigScreen.CENTER_POS.add(pos.scale(-1)).length();
-        float bigCollisionRadius = NukebobConfigScreen.CENTER_RADIUS+HITBOX_RADIUS*littleNukeScale;
-        if (distToBigOne<bigCollisionRadius) {
-            Vec2 normal = pos.add(NukebobConfigScreen.CENTER_POS.scale(-1)).normalized();
-            setVel(vel.add(normal.scale(-2f*(vel.dot(normal)))).scale(0.8f));
-            setPos(NukebobConfigScreen.CENTER_POS.add(normal.scale(bigCollisionRadius+1)));
+        float R = NukebobConfigScreen.CENTER_RADIUS;
+        Vec2 posRelative = NukebobConfigScreen.CENTER_POS.add(pos.scale(-1));
+        float distToBigOne = posRelative.length();
+        float bigCollisionRadius = R+r;
+        float holeWidth = 0.45f;
+        if (distToBigOne<bigCollisionRadius) { //first check big circle
+            //inside stuff
+            if (inside) {
+                setVel(new Vec2(0, 3f));
+                setPosX(width/2f);
+                return;
+            }
+
+            float distToAbsolute = (posRelative.x*(posRelative.x<0?-1:1)-posRelative.y)/Mth.sqrt(2);
+            boolean outsideComplex = posRelative.y-r<-0.5f*R || //below bottom
+                    Mth.abs(posRelative.x)>R/Mth.sqrt(2)-r; //outside absolute slope
+            //boolean touchingBottomCorner = new Vec2(holeWidth * R, -0.5f * R).distanceToSqr(new Vec2(Mth.abs(posRelative.x), posRelative.y))<r*r;
+            boolean touchingTopCorner = new Vec2(holeWidth*R, holeWidth * R).distanceToSqr(new Vec2(Mth.abs(posRelative.x),posRelative.y))<r*r;
+            boolean belowAbsolute = (Mth.abs(posRelative.x)>holeWidth*R-r && posRelative.y+r<holeWidth*R)&&(touchingTopCorner||posRelative.y<holeWidth*R);//area under absolute slopes
+            boolean absoluteSlope = -(Mth.abs(posRelative.x)-posRelative.y)/Mth.sqrt(2)<r && Mth.abs(posRelative.x)>holeWidth*R-r;
+            boolean notTouchingAbsoluteSlope = posRelative.y-r<holeWidth*R;
+            boolean inside = posRelative.y<r && Mth.abs(posRelative.x)+r<holeWidth*R;
+
+            if (absoluteSlope&&!belowAbsolute) {
+                if (outsideComplex) {
+                    if (Mth.abs(posRelative.add(vel.scale(-delta)).x)<R/Mth.sqrt(2f)) bounceAbsolute(posRelative, r, distToAbsolute);
+                    else bounceCircle(bigCollisionRadius);
+                } else {
+                    bounceAbsolute(posRelative, r, distToAbsolute);
+                }
+            } else if (outsideComplex&&notTouchingAbsoluteSlope) {
+                bounceCircle(bigCollisionRadius);
+            } else if (belowAbsolute) {
+                bounceWall(posRelative, holeWidth, r);
+            }
+            if (inside&&!this.inside&&!outsideComplex) {
+                this.inside = true;
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.GENERIC_EAT, 1.0F));
+                this.onPress();
+            }
+        } else {
+            if (this.inside) {
+                this.inside = false;
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_TRUMPET_OXIDIZED.value(), 0.5f, 2f));
+            }
         }
+    }
+
+    private void bounceCircle(float bigCollisionRadius) {
+        Vec2 normal = pos.add(NukebobConfigScreen.CENTER_POS.scale(-1)).normalized();
+        setVel(vel.add(normal.scale(-2f * (vel.dot(normal)))).scale(0.8f));
+        setPos(NukebobConfigScreen.CENTER_POS.add(normal.scale(bigCollisionRadius + 1)));
+    }
+
+    private void bounceAbsolute(Vec2 posRelative, float r, float distToAbsolute) {
+        boolean left = posRelative.x > 0;
+        Vec2 normal = new Vec2(left ? 1f : -1f, -1).normalized();
+
+        Vec2 incomingVel = vel.normalized();
+
+        float dot = vel.dot(normal);
+        if (dot < 0) {
+            setVel(vel.add(normal.scale(-1.8f * dot)));
+        }
+        //move back along velocity until hit absolute
+        addPos(incomingVel.scale((r - distToAbsolute) / dot));
+    }
+
+    private void bounceWall(Vec2 posRelative, float holeWidth, float r) {
+        boolean left = posRelative.x > 0;
+        setPosX(NukebobConfigScreen.CENTER_POS.x+(left?-1f:1f)*(holeWidth*r));
+        setVel(new Vec2(vel.x*-0.8f, vel.y));
     }
 
     public Vec2 physicsStep(int steps, float littleNukeScale, float width, float height, Vec2 newVel) {
         Vec2 pos = this.pos;
         Vec2 vel = newVel;
-        for (int i = 0; i<steps; i++) {
+        float delta = 0.5f;
+
+        for (int i = 0; i < steps; i++) {
             //radius
             float r = getCollisionRadius(littleNukeScale);
 
             //gravity
             float gravity = 3f;
-            vel = vel.add(new Vec2(0, gravity * 0.5f));
+            vel = vel.add(new Vec2(0, gravity * delta));
             //apply velocity
-            pos = pos.add(vel.scale(0.5f));
+            pos = pos.add(vel.scale(delta));
             //wall bounce
             float wallRestitution = 0.8f;
             if (pos.y + r > height) {
@@ -130,23 +214,73 @@ public class LittleNukebob {
                 vel = new Vec2(vel.x * 0.975f, vel.y);
             }
             //big nukebob collision
-            float distToBigOne = NukebobConfigScreen.CENTER_POS.add(pos.scale(-1)).length();
-            float bigCollisionRadius = NukebobConfigScreen.CENTER_RADIUS + HITBOX_RADIUS * littleNukeScale;
-            if (distToBigOne < bigCollisionRadius) {
-                Vec2 normal = pos.add(NukebobConfigScreen.CENTER_POS.scale(-1)).normalized();
-                vel = (vel.add(normal.scale(-2f * (vel.dot(normal)))).scale(0.8f));
-                pos = (NukebobConfigScreen.CENTER_POS.add(normal.scale(bigCollisionRadius + 1)));
+            float R = NukebobConfigScreen.CENTER_RADIUS;
+            Vec2 posRelative = NukebobConfigScreen.CENTER_POS.add(pos.scale(-1));
+            float distToBigOne = posRelative.length();
+            float bigCollisionRadius = R + r;
+
+            float holeWidth = 0.45f;
+            if (distToBigOne < bigCollisionRadius) { //first check big circle
+                float distToAbsolute = (posRelative.x * (posRelative.x < 0 ? -1 : 1) - posRelative.y) / Mth.sqrt(2);
+                boolean outsideComplex = posRelative.y - r < -0.5f * R || //below bottom
+                        Mth.abs(posRelative.x) > R / Mth.sqrt(2) - r; //outside absolute slope
+                boolean touchingTopCorner = new Vec2(holeWidth * R, holeWidth * R).distanceToSqr(new Vec2(Mth.abs(posRelative.x), posRelative.y)) < r * r;
+                boolean belowAbsolute = (Mth.abs(posRelative.x) > holeWidth * R - r && posRelative.y + r < holeWidth * R) && (touchingTopCorner || posRelative.y < holeWidth * R);
+                boolean absoluteSlope = -(Mth.abs(posRelative.x) - posRelative.y) / Mth.sqrt(2) < r && Mth.abs(posRelative.x) > holeWidth * R - r;
+                boolean notTouchingAbsoluteSlope = posRelative.y - r < holeWidth * R;
+                boolean inside = posRelative.y<r && Mth.abs(posRelative.x)+r<holeWidth*R;
+
+                if (absoluteSlope && !belowAbsolute) {
+                    if (outsideComplex) {
+                        if (Mth.abs(posRelative.add(vel.scale(-delta)).x) < R / Mth.sqrt(2f)) {
+                            boolean left = posRelative.x > 0;
+                            Vec2 normal = new Vec2(left ? 1f : -1f, -1).normalized();
+                            Vec2 incomingVel = vel.normalized();
+                            float dot = vel.dot(normal);
+                            if (dot < 0) {
+                                vel = vel.add(normal.scale(-1.8f * dot));
+                            }
+                            pos = pos.add(incomingVel.scale((r - distToAbsolute) / dot));
+                        } else {
+                            Vec2 normal = pos.add(NukebobConfigScreen.CENTER_POS.scale(-1)).normalized();
+                            vel = vel.add(normal.scale(-2f * (vel.dot(normal)))).scale(0.8f);
+                            pos = NukebobConfigScreen.CENTER_POS.add(normal.scale(bigCollisionRadius + 1));
+                        }
+                    } else {
+                        boolean left = posRelative.x > 0;
+                        Vec2 normal = new Vec2(left ? 1f : -1f, -1).normalized();
+                        Vec2 incomingVel = vel.normalized();
+                        float dot = vel.dot(normal);
+                        if (dot < 0) {
+                            vel = vel.add(normal.scale(-1.8f * dot));
+                        }
+                        pos = pos.add(incomingVel.scale((r - distToAbsolute) / dot));
+                    }
+                } else if (outsideComplex && notTouchingAbsoluteSlope) {
+                    Vec2 normal = pos.add(NukebobConfigScreen.CENTER_POS.scale(-1)).normalized();
+                    vel = vel.add(normal.scale(-2f * (vel.dot(normal)))).scale(0.8f);
+                    pos = NukebobConfigScreen.CENTER_POS.add(normal.scale(bigCollisionRadius + 1));
+                } else if (belowAbsolute) {
+                    boolean left = posRelative.x > 0;
+                    pos = new Vec2(NukebobConfigScreen.CENTER_POS.x + (left ? -1f : 1f) * (holeWidth * R - r), pos.y);
+                    vel = new Vec2(vel.x * -0.8f, vel.y);
+                }
+                if (inside&&!this.inside&&!outsideComplex) {
+                    return new Vec2(-1,-1);
+                }
             }
         }
         return pos;
     }
 
     public void pushOutOfBigNukebob(float littleNukeScale) {
+        float r = getCollisionRadius(littleNukeScale);
         float distToBigOne = NukebobConfigScreen.CENTER_POS.add(pos.scale(-1)).length();
-        float bigCollisionRadius = NukebobConfigScreen.CENTER_RADIUS+HITBOX_RADIUS*littleNukeScale;
-        if (distToBigOne<bigCollisionRadius) {
+        float bigCollisionRadius = NukebobConfigScreen.CENTER_RADIUS + r;
+
+        if (distToBigOne < bigCollisionRadius) {
             Vec2 normal = pos.add(NukebobConfigScreen.CENTER_POS.scale(-1)).normalized();
-            setPos(NukebobConfigScreen.CENTER_POS.add(normal.scale(bigCollisionRadius)));
+            setPos(NukebobConfigScreen.CENTER_POS.add(normal.scale(bigCollisionRadius + 1f)));
         }
     }
 
@@ -175,5 +309,9 @@ public class LittleNukebob {
 
     public Vec2 getLightDirectionRelative(Vec2 lightSource, float littleNukeScale) {
         return pos.add(littleNukeScale/2f).add(lightSource.scale(-1)).normalized().rotate(-rot);
+    }
+
+    public void onPress() {
+        this.onPress.accept(this);
     }
 }
