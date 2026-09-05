@@ -138,6 +138,7 @@ public class NukebobConfigScreen extends Screen {
                 littleNukebob.physics(delta, (float) littleNukeScale, width, height);
             } else {
                 littleNukebob.setVel(Vec2.ZERO);
+                littleNukebob.setRotVel(0f);
             }
             //tooltip
             boolean hovered = littleNukebob.isInHitbox(littleNukeScale, mouseX, mouseY);

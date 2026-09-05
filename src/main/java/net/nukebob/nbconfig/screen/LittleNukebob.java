@@ -16,6 +16,7 @@ public class LittleNukebob {
     private Vec2 vel = Vec2.ZERO;
 
     private float rot = 0;
+    private float rotVel = 0;
 
     public boolean inside = false;
 
@@ -49,9 +50,13 @@ public class LittleNukebob {
     public Vec2 getPos() {
         return pos;
     }
+    public float getRot() {return rot;}
 
     public void setVel(Vec2 vel) {
         this.vel = vel;
+    }
+    public void setRotVel(float rotVel) {
+        this.rotVel = rotVel;
     }
     public void scaleVelocity(float scale) {
         this.vel = new Vec2(vel.x * scale, vel.y * scale);
@@ -69,13 +74,6 @@ public class LittleNukebob {
         return vel;
     }
 
-    public void setRot(float rot) {
-        this.rot = rot;
-    }
-    public float getRot() {
-        return rot;
-    }
-
     public void physics(float delta, float littleNukeScale, float width, float height) {
         //radius
         float r = getCollisionRadius(littleNukeScale);
@@ -83,6 +81,8 @@ public class LittleNukebob {
         //gravity
         float gravity = 3f;
         addVel(new Vec2(0, gravity*delta));
+        rot+=rotVel*delta;
+        rotVel/=1.005f;
         //apply velocity
         addPos(vel.scale(delta));
         //wall bounce
@@ -92,17 +92,22 @@ public class LittleNukebob {
         }
         if (pos.y-r<0) {
             scaleVelocityY(-1*wallRestitution);
+            rotVel-=vel.x/r*delta;
         }
         if (pos.x+r>width) {
             scaleVelocityX(-1*wallRestitution);
+            rotVel-=vel.y/r*delta;
         }
         if (pos.x-r<0) {
             scaleVelocityX(-1*wallRestitution);
+            rotVel+=vel.y/r*delta;
         }
         setPosY(Mth.clamp(pos.y, r, height-r));
         setPosX(Mth.clamp(pos.x, r, width-r));
         //floor friction
         if (pos.y+r>height-r-3) {
+            rotVel/=1.6f;
+            rotVel+=vel.x/r*delta;
             scaleVelocityX(0.975f);
         }
         //big nukebob collision
@@ -116,6 +121,8 @@ public class LittleNukebob {
             if (inside) {
                 setVel(new Vec2(0, 3f));
                 setPosX(width/2f);
+                rot = 0f;
+                rotVel = 0f;
                 return;
             }
 
@@ -131,15 +138,15 @@ public class LittleNukebob {
 
             if (absoluteSlope&&!belowAbsolute) {
                 if (outsideComplex) {
-                    if (Mth.abs(posRelative.add(vel.scale(-delta)).x)<R/Mth.sqrt(2f)) bounceAbsolute(posRelative, r, distToAbsolute);
-                    else bounceCircle(bigCollisionRadius);
+                    if (Mth.abs(posRelative.add(vel.scale(-delta)).x)<R/Mth.sqrt(2f)) bounceAbsolute(posRelative, r, distToAbsolute, delta);
+                    else bounceCircle(bigCollisionRadius, r, delta);
                 } else {
-                    bounceAbsolute(posRelative, r, distToAbsolute);
+                    bounceAbsolute(posRelative, r, distToAbsolute, delta);
                 }
             } else if (outsideComplex&&notTouchingAbsoluteSlope) {
-                bounceCircle(bigCollisionRadius);
+                bounceCircle(bigCollisionRadius, r, delta);
             } else if (belowAbsolute) {
-                bounceWall(posRelative, holeWidth, r);
+                bounceWall(posRelative, holeWidth, r, delta);
             }
             if (inside&&!this.inside&&!outsideComplex) {
                 this.inside = true;
@@ -154,13 +161,18 @@ public class LittleNukebob {
         }
     }
 
-    private void bounceCircle(float bigCollisionRadius) {
+    private void bounceCircle(float bigCollisionRadius, float r, float delta) {
         Vec2 normal = pos.add(NukebobConfigScreen.CENTER_POS.scale(-1)).normalized();
         setVel(vel.add(normal.scale(-2f * (vel.dot(normal)))).scale(0.8f));
         setPos(NukebobConfigScreen.CENTER_POS.add(normal.scale(bigCollisionRadius + 1)));
+
+        //rot
+        Vec2 tangent = new Vec2(-normal.y, normal.x);
+        float tangentVel = vel.dot(tangent);
+        rotVel+=tangentVel/r * delta;
     }
 
-    private void bounceAbsolute(Vec2 posRelative, float r, float distToAbsolute) {
+    private void bounceAbsolute(Vec2 posRelative, float r, float distToAbsolute, float delta) {
         boolean left = posRelative.x > 0;
         Vec2 normal = new Vec2(left ? 1f : -1f, -1).normalized();
 
@@ -169,15 +181,22 @@ public class LittleNukebob {
         float dot = vel.dot(normal);
         if (dot < 0) {
             setVel(vel.add(normal.scale(-1.8f * dot)));
+
+            //rotate
+            Vec2 tangent = new Vec2(-normal.y, normal.x);
+            float tangentVel = vel.dot(tangent);
+            rotVel -= (tangentVel / r) * delta;
         }
         //move back along velocity until hit absolute
         addPos(incomingVel.scale((r - distToAbsolute) / dot));
     }
 
-    private void bounceWall(Vec2 posRelative, float holeWidth, float r) {
+    private void bounceWall(Vec2 posRelative, float holeWidth, float r, float delta) {
         boolean left = posRelative.x > 0;
         setPosX(NukebobConfigScreen.CENTER_POS.x+(left?-1f:1f)*(holeWidth*r));
         setVel(new Vec2(vel.x*-0.8f, vel.y));
+
+        rotVel += (left ? 1f : -1f) * (vel.y / r) * delta * 3f/5f;
     }
 
     public Vec2 physicsStep(int steps, float littleNukeScale, float width, float height, Vec2 newVel) {
