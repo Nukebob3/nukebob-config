@@ -2,11 +2,11 @@ package net.nukebob.nbconfig.modmenu;
 
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
-import net.nukebob.nbconfig.screen.NukebobConfigScreen;
+import net.nukebob.nbconfig.screen.TestConfigScreen;
 
 public class ModMenuApiImpl implements ModMenuApi {
-    @Override
+    /*@Override
     public ConfigScreenFactory<?> getModConfigScreenFactory() {
-        return NukebobConfigScreen::new;
-    }
+        return TestConfigScreen::new;
+    }*/
 }

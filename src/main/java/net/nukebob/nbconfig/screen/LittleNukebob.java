@@ -10,23 +10,25 @@ import net.minecraft.world.phys.Vec2;
 import java.util.function.Consumer;
 
 public class LittleNukebob {
-    private static final float HITBOX_RADIUS = (float) Math.sqrt(0.15);
+    protected static final float HITBOX_RADIUS = (float) Math.sqrt(0.15);
 
     private Vec2 pos = Vec2.ZERO;
     private Vec2 vel = Vec2.ZERO;
 
     private float rot = 0;
-    private float rotVel = 0;
+    protected float rotVel = 0;
 
     public boolean inside = false;
 
     public final MutableComponent name;
     private final Consumer<LittleNukebob> onPress;
+    private final Consumer<LittleNukebob> update;
     public boolean enabled;
 
-    public LittleNukebob(MutableComponent name, Consumer<LittleNukebob> onPress) {
+    public LittleNukebob(MutableComponent name, Consumer<LittleNukebob> onPress, Consumer<LittleNukebob> update) {
         this.name = name;
         this.onPress = onPress;
+        this.update = update;
     }
 
     public void setPos(Vec2 pos) {
@@ -50,6 +52,7 @@ public class LittleNukebob {
     public Vec2 getPos() {
         return pos;
     }
+    public void setRot(float rot) {this.rot = rot;}
     public float getRot() {return rot;}
 
     public void setVel(Vec2 vel) {
@@ -180,7 +183,7 @@ public class LittleNukebob {
 
         float dot = vel.dot(normal);
         if (dot < 0) {
-            setVel(vel.add(normal.scale(-1.8f * dot)));
+            setVel(vel.add(normal.scale(-1.5f * dot)));
 
             //rotate
             Vec2 tangent = new Vec2(-normal.y, normal.x);
@@ -194,7 +197,7 @@ public class LittleNukebob {
     private void bounceWall(Vec2 posRelative, float holeWidth, float r, float delta) {
         boolean left = posRelative.x > 0;
         setPosX(NukebobConfigScreen.CENTER_POS.x+(left?-1f:1f)*(holeWidth*r));
-        setVel(new Vec2(vel.x*-0.8f, vel.y));
+        setVel(new Vec2(vel.x*-0.5f, vel.y));
 
         rotVel += (left ? 1f : -1f) * (vel.y / r) * delta * 3f/5f;
     }
@@ -257,7 +260,7 @@ public class LittleNukebob {
                             Vec2 incomingVel = vel.normalized();
                             float dot = vel.dot(normal);
                             if (dot < 0) {
-                                vel = vel.add(normal.scale(-1.8f * dot));
+                                vel = vel.add(normal.scale(-1.5f * dot));
                             }
                             pos = pos.add(incomingVel.scale((r - distToAbsolute) / dot));
                         } else {
@@ -271,7 +274,7 @@ public class LittleNukebob {
                         Vec2 incomingVel = vel.normalized();
                         float dot = vel.dot(normal);
                         if (dot < 0) {
-                            vel = vel.add(normal.scale(-1.8f * dot));
+                            vel = vel.add(normal.scale(-1.5f * dot));
                         }
                         pos = pos.add(incomingVel.scale((r - distToAbsolute) / dot));
                     }
@@ -282,7 +285,7 @@ public class LittleNukebob {
                 } else if (belowAbsolute) {
                     boolean left = posRelative.x > 0;
                     pos = new Vec2(NukebobConfigScreen.CENTER_POS.x + (left ? -1f : 1f) * (holeWidth * R - r), pos.y);
-                    vel = new Vec2(vel.x * -0.8f, vel.y);
+                    vel = new Vec2(vel.x * -0.5f, vel.y);
                 }
                 if (inside&&!this.inside&&!outsideComplex) {
                     return new Vec2(-1,-1);
@@ -332,5 +335,10 @@ public class LittleNukebob {
 
     public void onPress() {
         this.onPress.accept(this);
+        update();
+    }
+
+    public void update() {
+        this.update.accept(this);
     }
 }

@@ -11,11 +11,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 public class MainConfig {
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    /*private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final File CONFIG_FILE = FabricLoader.getInstance().getConfigDir().resolve(NukebobConfig.MOD_ID + "/main_config.json").toFile();
     private static MainConfig config;
 
     public boolean showLivesInNametag = true;
+    public boolean livesDistanceLimit = true;
 
     public static synchronized MainConfig loadConfig() {
         if (config!=null) return config;
@@ -52,5 +53,5 @@ public class MainConfig {
         } catch (IOException e) {
             NukebobConfig.LOGGER.error("Could not save main config file", e);
         }
-    }
+    }*/
 }

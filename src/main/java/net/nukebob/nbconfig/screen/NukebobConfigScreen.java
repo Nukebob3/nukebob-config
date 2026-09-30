@@ -9,15 +9,14 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec2;
 import net.nukebob.nbconfig.NukebobConfig;
-import net.nukebob.nbconfig.config.MainConfig;
 import net.nukebob.nbconfig.render.NukebobPipelines;
 import org.jspecify.annotations.NonNull;
 import org.lwjgl.glfw.GLFW;
 
-public class NukebobConfigScreen extends Screen {
-    private final Screen parent;
-    private final LittleNukebob[] littleNukebobs;
-    private final LittleNukebob showLivesInNametag;
+import java.util.ArrayList;
+
+public abstract class NukebobConfigScreen extends Screen {
+    private final ArrayList<LittleNukebob> littleNukebobs;
 
     private Vec2 clickPos = Vec2.ZERO;
     private int selected = -1;
@@ -29,21 +28,24 @@ public class NukebobConfigScreen extends Screen {
     public static Vec2 CENTER_POS = Vec2.ZERO;
     public static float CENTER_RADIUS = 0;
 
-    public NukebobConfigScreen(Screen screen) {
-        parent = screen;
+    public NukebobConfigScreen() {
         super(Component.literal("Config"));
-        showLivesInNametag = new LittleNukebob(Component.literal("Show lives in nametag"), (littleNukebob)->{
-            MainConfig.loadConfig().showLivesInNametag=!MainConfig.loadConfig().showLivesInNametag;
-            littleNukebob.enabled = MainConfig.loadConfig().showLivesInNametag;
-        });
-        littleNukebobs = new LittleNukebob[]{showLivesInNametag};
+        littleNukebobs = setConfig();
     }
+
+    public abstract ArrayList<LittleNukebob> setConfig();
 
     @Override
     protected void init() {
         super.init();
-        showLivesInNametag.setPos(new Vec2(0.5f*width, 0.9f*height));
-        showLivesInNametag.enabled = MainConfig.loadConfig().showLivesInNametag;
+        for (int i = 0; i < littleNukebobs.size(); i++) {
+            LittleNukebob littleNukebob = littleNukebobs.get(i);
+            littleNukebob.setVel(Vec2.ZERO);
+            littleNukebob.setRotVel(0);
+            littleNukebob.setRot(0);
+            littleNukebob.setPos(new Vec2((float) (0.5f*width + (i+0.5f-littleNukebobs.size()/2f)*height*0.8/3.1f/6f*3f), 0.9f*height));
+            littleNukebob.update();
+        }
     }
 
     @Override
@@ -93,7 +95,7 @@ public class NukebobConfigScreen extends Screen {
 
             int steps = 9;
             for (int i = 0; i < steps; i++) {
-                Vec2 futurePos = littleNukebobs[selected].physicsStep(i, littleNukeScale, width, height, force);
+                Vec2 futurePos = littleNukebobs.get(selected).physicsStep(i, littleNukeScale, width, height, force);
                 int color = 0x00FFFFFF | ((int)(255 * ((steps - i) / (float) steps)) << 24);
                 graphics.verticalLine((int) futurePos.x, (int) futurePos.y, (int) futurePos.y, color);
             }
@@ -112,28 +114,28 @@ public class NukebobConfigScreen extends Screen {
             dragVelocity = newMouse.add(lastDragMouse.scale(-1));
             lastDragMouse = newMouse;
 
-            littleNukebobs[selected].setPos(
+            littleNukebobs.get(selected).setPos(
                     new Vec2(Mth.clamp(
                             (float) mouseX,
-                            littleNukebobs[selected].getCollisionRadius(littleNukeScale),
-                            width - littleNukebobs[selected].getCollisionRadius(littleNukeScale)),
+                            littleNukebobs.get(selected).getCollisionRadius(littleNukeScale),
+                            width - littleNukebobs.get(selected).getCollisionRadius(littleNukeScale)),
 
                             Mth.clamp((float) mouseY,
-                                    littleNukebobs[selected].getCollisionRadius(littleNukeScale),
-                                    height - littleNukebobs[selected].getCollisionRadius(littleNukeScale))));
+                                    littleNukebobs.get(selected).getCollisionRadius(littleNukeScale),
+                                    height - littleNukebobs.get(selected).getCollisionRadius(littleNukeScale))));
 
-            littleNukebobs[selected].pushOutOfBigNukebob(littleNukeScale);
+            littleNukebobs.get(selected).pushOutOfBigNukebob(littleNukeScale);
         }
 
         //render and physics
-        for (int i = 0; i<littleNukebobs.length; i++) {
-            LittleNukebob littleNukebob = littleNukebobs[i];
+        for (int i = 0; i<littleNukebobs.size(); i++) {
+            LittleNukebob littleNukebob = littleNukebobs.get(i);
 
             //light
             Vec2 lightSource = new Vec2((float) width /2+ (float) height *3/8, (float) -height /1.5f);
             Vec2 lightDirectionRelative = littleNukebob.getLightDirectionRelative(lightSource, littleNukeScale);
             //physics
-            if (i!=selected&&!(mouseButton==GLFW.GLFW_MOUSE_BUTTON_LEFT||mouseButton==GLFW.GLFW_MOUSE_BUTTON_RIGHT)) {
+            if (i!=selected||!(mouseButton==GLFW.GLFW_MOUSE_BUTTON_LEFT||mouseButton==GLFW.GLFW_MOUSE_BUTTON_RIGHT)) {
                 float delta = (float) Math.min(minecraft.getDeltaTracker().getRealtimeDeltaTicks(),0.5);
                 littleNukebob.physics(delta, (float) littleNukeScale, width, height);
             } else {
@@ -155,6 +157,7 @@ public class NukebobConfigScreen extends Screen {
             graphics.blit(NukebobPipelines.LITTLE_NUKEBOB_GUI, NukebobConfig.id("textures/gui/sprites/nukebobs/"+(!(hovered&&!littleNukebob.inside)?"little":"little_hover")+(littleNukebob.enabled?"_on":"")+".png"), 0,0, 0, 0, littleNukeScale, littleNukeScale, littleNukeScale, littleNukeScale, color);
             graphics.pose().popMatrix();
         }
+        interNukebobCollision(littleNukeScale);
 
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, NukebobConfig.id("nukebobs/big_front"), (width-scale)/2, (height-scale)/2, scale, scale);
     }
@@ -162,8 +165,8 @@ public class NukebobConfigScreen extends Screen {
     @Override
     public boolean mouseClicked(@NonNull MouseButtonEvent event, boolean doubleClick) {
         boolean clicked = false;
-        for (int i = 0; i < littleNukebobs.length; i++) {
-            if (littleNukebobs[i].isInHitbox((float) (height*0.8/6), (float) event.x(), (float) event.y())&&!littleNukebobs[i].inside) {
+        for (int i = 0; i < littleNukebobs.size(); i++) {
+            if (littleNukebobs.get(i).isInHitbox((float) (height*0.8/6), (float) event.x(), (float) event.y())&&!littleNukebobs.get(i).inside) {
                 clicked = true;
                 selected = i;
                 clickPos = new Vec2((float) event.x(), (float) event.y());
@@ -187,9 +190,9 @@ public class NukebobConfigScreen extends Screen {
                 length = (length / 5);
                 force = force.normalized().scale(length);
 
-                littleNukebobs[selected].setVel(force.scale(4f));
+                littleNukebobs.get(selected).setVel(force.scale(4f));
             } else if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
-                littleNukebobs[selected].setVel(dragVelocity.scale(3f));
+                littleNukebobs.get(selected).setVel(dragVelocity.scale(3f));
             }
         }
         selected = -1;
@@ -197,9 +200,43 @@ public class NukebobConfigScreen extends Screen {
         return super.mouseReleased(event);
     }
 
-    @Override
-    public void onClose() {
-        minecraft.setScreenAndShow(parent);
-        MainConfig.saveConfig();
+    public void interNukebobCollision(float littleNukeScale) {
+        int size = littleNukebobs.size();
+        for (int a = 0; a < 4; a++) {
+            for (int i = 0; i < size; i++) {
+                for (int j = i + 1; j < size; j++) {
+                    LittleNukebob b1 = littleNukebobs.get(i);
+                    LittleNukebob b2 = littleNukebobs.get(j);
+
+                    Vec2 posRel = b1.getPos().add(b2.getPos().negated());
+                    Vec2 velRel = b1.getVel().add(b2.getVel().negated());
+                    float distSq = posRel.x * posRel.x + posRel.y * posRel.y;
+
+                    float r1 = b1.getCollisionRadius(littleNukeScale);
+                    float r2 = b2.getCollisionRadius(littleNukeScale);
+                    float minDist = r1 + r2;
+
+                    if (distSq >= minDist * minDist || distSq == 0) continue;
+
+                    float dist = (float) Math.sqrt(distSq);
+                    Vec2 normal = posRel.normalized();
+                    float overlap = minDist - dist;
+
+                    Vec2 correction = normal.scale(overlap * 0.5f);
+                    b1.setPos(b1.getPos().add(correction));
+                    b2.setPos(b2.getPos().add(correction.negated()));
+
+                    Vec2 v1 = b1.getVel().add(posRel.negated().scale((velRel.dot(posRel)/posRel.lengthSquared()))).scale(0.9f);
+                    Vec2 v2 = b2.getVel().add(posRel.scale((velRel.negated().dot(posRel.negated())/posRel.negated().lengthSquared()))).scale(0.9f);
+                    b1.setVel(v1);
+                    b2.setVel(v2);
+
+                    Vec2 tangent = new Vec2(-normal.y, normal.x);
+                    float tangentVel = velRel.dot(tangent);
+                    b1.rotVel += (tangentVel / r1) * 0.025f;
+                    b2.rotVel += (tangentVel / r2) * 0.025f;
+                }
+            }
+        }
     }
 }

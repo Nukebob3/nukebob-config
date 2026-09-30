@@ -3,13 +3,13 @@
 	"id": "nbconfig",
 	"version": "${version}",
 	"name": "NukebobConfig",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "A config screen mod by the one and only",
 	"authors": [
-		"Me!"
+		"Nukebob"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://modrinth.com/mod/nukebobconfig",
+		"sources": "https://github.com/Nukebob3/nukebob-config"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/nbconfig/icon.png",

@@ -13,7 +13,7 @@ public class NukebobConfig implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		LOGGER.info("NukebobConfig loaded");
-		MainConfig.loadConfig();
+		//MainConfig.loadConfig();
 	}
 
 	public static Identifier id(String path) {
