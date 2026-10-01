@@ -159,7 +159,7 @@ public class LittleNukebob {
         } else {
             if (this.inside) {
                 this.inside = false;
-                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_TRUMPET_OXIDIZED.value(), 0.5f, 2f));
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.PIG_AMBIENT, 1f, 2f));
             }
         }
     }
@@ -330,7 +330,17 @@ public class LittleNukebob {
     }
 
     public Vec2 getLightDirectionRelative(Vec2 lightSource, float littleNukeScale) {
-        return pos.add(littleNukeScale/2f).add(lightSource.scale(-1)).normalized().rotate(-rot);
+        Vec2 dir = pos.add(littleNukeScale / 2f).add(lightSource.scale(-1)).normalized();
+        return rotate(dir, -rot);
+    }
+
+    private static Vec2 rotate(Vec2 v, float radians) {
+        float cos = (float) Math.cos(radians);
+        float sin = (float) Math.sin(radians);
+        return new Vec2(
+                v.x * cos - v.y * sin,
+                v.x * sin + v.y * cos
+        );
     }
 
     public void onPress() {

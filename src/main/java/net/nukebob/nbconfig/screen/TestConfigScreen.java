@@ -9,8 +9,8 @@ public class TestConfigScreen extends NukebobConfigScreen{
     private final Screen parent;
 
     private TestConfigScreen(Screen screen) {
-        parent = screen;
         super();
+        parent = screen;
     }
 
     @Override

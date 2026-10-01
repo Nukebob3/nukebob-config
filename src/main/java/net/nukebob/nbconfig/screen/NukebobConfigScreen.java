@@ -1,6 +1,6 @@
 package net.nukebob.nbconfig.screen;
 
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -49,14 +49,14 @@ public abstract class NukebobConfigScreen extends Screen {
     }
 
     @Override
-    public void extractRenderState(@NonNull GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-        super.extractRenderState(graphics, mouseX, mouseY, a);
+    public void render(@NonNull GuiGraphics graphics, int mouseX, int mouseY, float a) {
+        super.render(graphics, mouseX, mouseY, a);
         int scale = (int) (this.height*0.8);
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, NukebobConfig.id("nukebobs/big"), (width-scale)/2, (height-scale)/2, scale, scale);
 
         //help arrow
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, NukebobConfig.id("help_arrow"), (width-scale/8)/2, (int) (height*0.05f), scale/8, scale/8, 0x99FFFFFF);
-        graphics.centeredText(minecraft.font, "Drop configs in here to toggle", width/2, (int) (height*0.02f), 0x99FFFFFF);
+        graphics.drawCenteredString(minecraft.font, "Drop configs in here to toggle", width/2, (int) (height*0.02f), 0x99FFFFFF);
 
         //big one
         CENTER_POS = new Vec2(width/2f, height/2f - (float) scale / 13f);
@@ -97,7 +97,7 @@ public abstract class NukebobConfigScreen extends Screen {
             for (int i = 0; i < steps; i++) {
                 Vec2 futurePos = littleNukebobs.get(selected).physicsStep(i, littleNukeScale, width, height, force);
                 int color = 0x00FFFFFF | ((int)(255 * ((steps - i) / (float) steps)) << 24);
-                graphics.verticalLine((int) futurePos.x, (int) futurePos.y, (int) futurePos.y, color);
+                graphics.vLine((int) futurePos.x, (int) futurePos.y, (int) futurePos.y, color);
             }
 
             graphics.pose().pushMatrix();
